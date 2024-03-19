@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+database/DF/ASVspoof2021_DF_eval/LICENSE.DF.txt
+*.flac

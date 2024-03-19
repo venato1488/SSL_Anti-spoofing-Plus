@@ -9,6 +9,11 @@ from torch import Tensor
 import fairseq
 
 
+######################################
+## Breath Talking Silence Detection ##
+######################################
+
+
 ___author__ = "Hemlata Tak"
 __email__ = "tak@eurecom.fr"
 
@@ -431,6 +436,27 @@ class Residual_block(nn.Module):
 
 class Model(nn.Module):
     def __init__(self, args,device):
+        """
+        Initialises the anti-spoofing model with specified configurations and device.
+
+        This method sets up the model architecture comprising the following components:
+        - AASIST parameters
+        - A pretrained feature extractor Wav2Vec 2.0 model (SSLModel) for initial feature extraction.
+        - RawNet2 encoder for further feature extraction.
+        - Graph Attention Networks (GATs) and Heterogenous Hierarchical Temporal Graph Attention Networks (HS-GATs) 
+        for capturing spectral-temporal dependencie in the audio features.
+        - Graph pooling layers for reducing the number of nodes (dimensions) of the graph representation.
+        - Output layer for classification.
+
+        The model architecture is designed to effectively process audion signals and extract
+        meaningful features for the task of anti-spoofing. It leverages both convolutional neural network (CNN)
+        for initial feature extraction and graph based attention networks for capturing complex spectral-temporal 
+        relationships in the audio signals.
+
+        Parameters:
+        - args: Model configuration parameters.
+        - device: Device to run the model on (CPU or GPU).
+        """
         super().__init__()
         self.device = device
         
@@ -504,6 +530,24 @@ class Model(nn.Module):
         self.out_layer = nn.Linear(5 * gat_dims[1], 2)
 
     def forward(self, x):
+        """
+        Processes an input batch of audio signals through the model to predict whether each audio is bonafide or spoofed.
+
+        The forward pass involves the following steps:
+        1. Extract initial features from the raw input audio signals using a pre-trained XLS-R 300M model.
+        2. Process the extracted features through the RawNet2 encoder to further extract meaningful features.
+        3. Apply spectral and temporal attention to the extracted features using Graph Attention Networks (GATs) 
+        and Heterogenous Hierarchical Temporal Graph Attention Networks (HS-GATs).
+        4. Apply graph pooling to reduce the number of nodes (dimensions) of the graph representation.
+        5. Perform readout operation to obtain the final output for classification.
+
+        Parameters:
+        - x: Input batch of audio signals.
+
+        Returns:
+        - output: Predictions for each audio signal in the input batch.
+        
+        """
         #-------pre-trained Wav2vec model fine tunning ------------------------##
         x_ssl_feat = self.ssl_model.extract_feat(x.squeeze(-1))
         x = self.LL(x_ssl_feat) #(bs,frame_number,feat_out_dim)
