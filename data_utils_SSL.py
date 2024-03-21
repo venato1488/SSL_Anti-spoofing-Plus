@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 from RawBoost import ISD_additive_noise,LnL_convolutive_noise,SSI_additive_noise,normWav
 from random import randrange
 import random
+import csv
 
 
 ___author__ = "Hemlata Tak"
@@ -17,10 +18,13 @@ __email__ = "tak@eurecom.fr"
 ## Dataset processing and loading ##
 ####################################
 
+# TODO: implement one time preporcessing of the new datasets and save it to the disk
+
+
 
 def genSpoof_list( dir_meta,is_train=False,is_eval=False):
     """
-    Generate a list of spoof files based on the provided metadata file and the parameter provided at the execution
+    Generate a list of spoof and bonafide files files based on the provided metadata file and the parameter provided at the execution
     of the main_SSL_LA/DF. Key is the file name and value is the label (1 for bonafide, 0 for spoof).
 
     Args:
@@ -33,7 +37,7 @@ def genSpoof_list( dir_meta,is_train=False,is_eval=False):
                       If is_eval is True, returns a list of file names.
                       Otherwise, returns a dictionary containing the metadata for each file and a list of file names.
     """
-
+    # TODO: Add other if conditions for other datasets with different metadata formats
     d_meta = {}
     file_list=[]
     with open(dir_meta, 'r') as f:
@@ -63,7 +67,6 @@ def genSpoof_list( dir_meta,is_train=False,is_eval=False):
 
 
 import numpy as np
-
 def pad(x, max_len=64600):
     """
     This function applies a repeat-padding strategy to ensure audio samples reach a uniform 
@@ -92,7 +95,7 @@ def pad(x, max_len=64600):
 			
 
 class Dataset_ASVspoof2019_train(Dataset):
-	def __init__(self,args,list_IDs, labels, base_dir,algo):
+    def __init__(self,args,list_IDs, labels, base_dir,algo):
             '''self.list_IDs	: list of strings (each string: utt key),
                self.labels      : dictionary (key: utt key, value: label integer)'''
                
@@ -103,11 +106,11 @@ class Dataset_ASVspoof2019_train(Dataset):
             self.args=args
             self.cut=64600 # take ~4 sec audio (64600 samples)
 
-	def __len__(self):
+    def __len__(self):
            return len(self.list_IDs)
 
 
-	def __getitem__(self, index):
+    def __getitem__(self, index):
             """
             Retrieves a single item from the dataset at the specified index. It loads an audio file
             using librosa, applies preprocessing using the RawBoost algorithm and data augmentation,
@@ -130,27 +133,114 @@ class Dataset_ASVspoof2019_train(Dataset):
             
             return x_inp, target
             
-            
+           
 class Dataset_ASVspoof2021_eval(Dataset):
-	def __init__(self, list_IDs, base_dir):
-            '''self.list_IDs	: list of strings (each string: utt key),
-               '''
+    def __init__(self, list_IDs, base_dir):
+        '''self.list_IDs	: list of strings (each string: utt key),
+            '''
                
-            self.list_IDs = list_IDs
-            self.base_dir = base_dir
-            self.cut=64600 # take ~4 sec audio (64600 samples)
+        self.list_IDs = list_IDs
+        self.base_dir = base_dir
+        self.cut=64600 # take ~4 sec audio (64600 samples)
 
     def __len__(self):
             return len(self.list_IDs)
 
 
-	def __getitem__(self, index):
+    def __getitem__(self, index):
             
             utt_id = self.list_IDs[index]
             X, fs = librosa.load(self.base_dir+'flac/'+utt_id+'.flac', sr=16000)
             X_pad = pad(X,self.cut)
             x_inp = Tensor(X_pad)
             return x_inp,utt_id  
+
+
+
+
+
+
+
+def evaluation_file_creator(metadata_dict):
+    """
+    Creates an evaluation file formated in the same way ASVspoof 2021 DF evaluation file is formatted.
+    """
+    keys_path = 'keys/CM/trial_metadata.txt'
+    with open(keys_path, 'w') as file:
+        for key, label in metadata_dict.items():
+            file.write('- {} - - - {} - eval\n'.format(key, label))
+        file.close()
+        print("Evaluation file created successfully")
+
+
+def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
+    """
+    Generate a list of spoof and bonafide files files based on the provided metadata file and the parameter provided at the execution
+    of the main_SSL_LA/DF. Key is the file name and value is the label (1 for bonafide, 0 for spoof).
+
+    Args:
+        dir_meta (str): The path to the metadata file.
+        is_train (bool, optional): Specifies whether the function is used for training. Defaults to False.
+        is_eval (bool, optional): Specifies whether the function is used for evaluation. Defaults to False.
+
+    Returns:
+        dict or list: If is_train is True, returns a dictionary containing the metadata for each file and a list of file names.
+                      If is_eval is True, returns a list of file names.
+                      Otherwise, returns a dictionary containing the metadata for each file and a list of file names.
+    """
+    d_meta = {}
+    file_list=[]
+    with open(metadata_file_path, 'r') as file:
+        reader = csv.reader(file)
+        next(reader)  # Skip the header row
+
+        if (is_train):
+            for row in reader:
+                key, _,label = row
+                
+                file_list.append(key)
+                d_meta[key] = 1 if label == 'bona-fide' else 0
+            return d_meta,file_list
+        
+        elif(is_eval):
+            metadata_dict = {}
+            for row in reader:              
+                key, _, label = row
+                metadata_dict[key] = 'bonafide' if label == 'bona-fide' else 'spoof'
+                file_list.append(key)
+            evaluation_file_creator(metadata_dict)
+            return file_list
+        else:
+            for row in reader:
+                key, _,label = row
+                
+                file_list.append(key)
+                d_meta[key] = 1 if label == 'bona-fide' else 0
+            return d_meta,file_list
+
+
+class Dataset_In_The_Wild_eval(Dataset):
+    def __init__(self, list_IDs, base_dir):
+            '''self.list_IDs	: list of strings (each string: utt key),
+               '''
+               
+            self.list_IDs = list_IDs
+            self.base_dir = base_dir
+            self.cut=64600 # take ~4 sec audio (64600 samples) 
+    
+    def __len__(self):
+            return len(self.list_IDs)
+
+
+    def __getitem__(self, index):
+                
+            utt_id = self.list_IDs[index]
+            X, fs = librosa.load(self.base_dir+utt_id, sr=16000)
+            X_pad = pad(X,self.cut)
+            x_inp = Tensor(X_pad)
+            return x_inp,utt_id
+        
+
 
 
 

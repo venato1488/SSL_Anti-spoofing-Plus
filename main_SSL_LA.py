@@ -6,8 +6,9 @@ import torch
 from torch import nn
 from torch import Tensor
 from torch.utils.data import DataLoader
+from torch.utils.data import ConcatDataset
 import yaml
-from data_utils_SSL import genSpoof_list,Dataset_ASVspoof2019_train,Dataset_ASVspoof2021_eval
+from data_utils_SSL import genSpoof_list,Dataset_ASVspoof2019_train,Dataset_ASVspoof2021_eval,genSpoof_list_ITW,Dataset_In_The_Wild_eval
 from model import Model
 from tensorboardX import SummaryWriter
 from core_scripts.startup_config import set_random_seed
@@ -81,6 +82,8 @@ def train_epoch(train_loader, model, lr,optim, device):
 
     #set objective (Loss) functions
     weight = torch.FloatTensor([0.1, 0.9]).to(device)
+
+    # TODO: Research about how backpropagation works with weighted loss functions and if it is implemented with crietrion
     criterion = nn.CrossEntropyLoss(weight=weight)
     
     for batch_x, batch_y in train_loader:
@@ -220,8 +223,10 @@ if __name__ == '__main__':
     
     track = args.track
 
-    assert track in ['LA', 'PA','DF'], 'Invalid track given'
+    assert track in ['LA','DF'], 'Invalid track given'
 
+    # TODO: add more datasets
+    
     #database
     prefix      = 'ASVspoof_{}'.format(track)
     prefix_2019 = 'ASVspoof2019.{}'.format(track)
@@ -256,25 +261,42 @@ if __name__ == '__main__':
 
 
     #evaluation 
+    """
+    LA EVALUATION
+
     if args.eval:
         file_eval = genSpoof_list( dir_meta =  os.path.join(args.protocols_path+'{}_cm_protocols/{}.cm.eval.trl.txt'.format(prefix,prefix_2021)),is_train=False,is_eval=True)
         print('no. of eval trials',len(file_eval))
         eval_set=Dataset_ASVspoof2021_eval(list_IDs = file_eval,base_dir = os.path.join(args.database_path+'ASVspoof2021_{}_eval/'.format(args.track)))
         produce_evaluation_file(eval_set, model, device, args.eval_output)
         sys.exit(0)
-   
-    
+    """
+    if args.is_eval:
+        file_eval = genSpoof_list_ITW( metadata_file_path = r'release_in_the_wild\meta.csv',is_train=False,is_eval=True)
+        print('no. of eval trials',len(file_eval))
+        eval_set=Dataset_In_The_Wild_eval(list_IDs = file_eval,base_dir = 'release_in_the_wild/release_in_the_wild/')
+        produce_evaluation_file(eval_set, model, device, args.eval_output)
+        sys.exit(0)
 
+
+
+
+    """ TODO: combine ASV metadata with different metadata from different datasets, there should
+    be similar arguments passed to choose what combination of datasets to use for both training and evaluation.
+    """
      
     # define train dataloader
     d_label_trn,file_train = genSpoof_list( dir_meta =  os.path.join(args.protocols_path+'{}_cm_protocols/{}.cm.train.trn.txt'.format(prefix,prefix_2019)),is_train=True,is_eval=False)
     
     print('no. of training trials',len(file_train))
     
-    train_set=Dataset_ASVspoof2019_train(args,list_IDs = file_train,labels = d_label_trn,base_dir = os.path.join(args.database_path+'{}_{}_train/'.format(prefix_2019.split('.')[0],args.track)),algo=args.algo)
-    
+    train_set=Dataset_ASVspoof2019_train(args,list_IDs = file_train,
+                                         labels = d_label_trn,
+                                         base_dir = os.path.join(args.database_path+'{}_{}_train/'.format(prefix_2019.split('.')[0],args.track)),algo=args.algo)
+    print("train set of type {} and shape {}".format(train_set.type,train_set.shape))
+
     train_loader = DataLoader(train_set, batch_size=args.batch_size,num_workers=8, shuffle=True,drop_last = True)
-    
+    print("Training loader shape is: {train_loader.shape} ")
     del train_set,d_label_trn
     
 
@@ -285,9 +307,10 @@ if __name__ == '__main__':
     print('no. of validation trials',len(file_dev))
     
     dev_set = Dataset_ASVspoof2019_train(args,list_IDs = file_dev,
-		labels = d_label_dev,
-		base_dir = os.path.join(args.database_path+'{}_{}_dev/'.format(prefix_2019.split('.')[0],args.track)),algo=args.algo)
+                                         labels = d_label_dev,
+                                         base_dir = os.path.join(args.database_path+'{}_{}_dev/'.format(prefix_2019.split('.')[0],args.track)),algo=args.algo)
     dev_loader = DataLoader(dev_set, batch_size=args.batch_size,num_workers=8, shuffle=False)
+    print("Development loader shape is: {dev_loader.shape} ")
     del dev_set,d_label_dev
 
     

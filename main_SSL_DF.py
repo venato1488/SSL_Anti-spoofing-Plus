@@ -7,7 +7,7 @@ from torch import nn
 from torch import Tensor
 from torch.utils.data import DataLoader
 import yaml
-from data_utils_SSL import genSpoof_list,Dataset_ASVspoof2019_train,Dataset_ASVspoof2021_eval
+from data_utils_SSL import genSpoof_list,Dataset_ASVspoof2019_train,Dataset_ASVspoof2021_eval,genSpoof_list_ITW,Dataset_In_The_Wild_eval
 from model import Model
 from tensorboardX import SummaryWriter
 from core_scripts.startup_config import set_random_seed
@@ -249,13 +249,19 @@ if __name__ == '__main__':
 
 
     #evaluation 
-    if args.eval:
+    """if args.eval:
         file_eval = genSpoof_list( dir_meta =  os.path.join(args.protocols_path+'ASVspoof_{}_cm_protocols/{}.cm.eval.trl.txt'.format(track,prefix_2021)),is_train=False,is_eval=True)
         print('no. of eval trials',len(file_eval))
         eval_set=Dataset_ASVspoof2021_eval(list_IDs = file_eval,base_dir = os.path.join(args.database_path+'ASVspoof2021_{}_eval/'.format(args.track)))
         produce_evaluation_file(eval_set, model, device, args.eval_output)
+        sys.exit(0)"""
+
+    if args.is_eval:
+        file_eval = genSpoof_list_ITW( metadata_file_path = r'release_in_the_wild\meta.csv',is_train=False,is_eval=True)
+        print('no. of eval trials',len(file_eval))
+        eval_set=Dataset_In_The_Wild_eval(list_IDs = file_eval,base_dir = 'release_in_the_wild/release_in_the_wild/')
+        produce_evaluation_file(eval_set, model, device, args.eval_output)
         sys.exit(0)
-   
     
 
      

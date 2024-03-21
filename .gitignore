@@ -129,3 +129,23 @@ dmypy.json
 .pyre/
 database/DF/ASVspoof2021_DF_eval/LICENSE.DF.txt
 *.flac
+reduced_database2/ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt
+/Pre_trained_models
+/models
+reduce_database.py
+/reduced_database2
+/logs
+/keys
+xlsr2_300m.pt
+eval_CM_scores_file_SSL_LA34.txt
+eval_CM_scores_file_SSL_LA.txt
+eval_CM-scores_file_SSL_LA.txt
+/database/LA
+/database/DF
+data_utils_SSL - Copy.py
+bts.py
+/3
+2024-03-07 10_21_31-main_SSL_LA.py - SSL_Anti-spoofing - Visual Studio Code.png
+database/mlaad_v2
+database/M-AILABS
+release_in_the_wild
