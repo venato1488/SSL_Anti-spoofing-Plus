@@ -147,5 +147,16 @@ bts.py
 /3
 2024-03-07 10_21_31-main_SSL_LA.py - SSL_Anti-spoofing - Visual Studio Code.png
 database/mlaad_v2
-database/M-AILABS
+database/MAILABS
 release_in_the_wild
+check_protocol.py
+database/ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.eval.trl.txt
+database/ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt
+/database/MLAAD_and_M-AILABS
+LA_on_ITW_eval222.txt
+LA_on_ITW_eval.txt
+in_the_wild_audio_visualisation.png
+DF_on_MLAAD_eval332.txt
+DF_on_MLAAD_eval.txt
+DF_on_ITW_eval.txt
+audio_visualisation.py

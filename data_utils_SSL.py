@@ -156,8 +156,9 @@ class Dataset_ASVspoof2021_eval(Dataset):
             return x_inp,utt_id  
 
 
-
-
+#####################
+#### ITW Dataset ####
+#####################
 
 
 
@@ -170,7 +171,7 @@ def evaluation_file_creator(metadata_dict):
         for key, label in metadata_dict.items():
             file.write('- {} - - - {} - eval\n'.format(key, label))
         file.close()
-        print("Evaluation file created successfully")
+        print("Keys file created successfully")
 
 
 def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
@@ -203,12 +204,12 @@ def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
             return d_meta,file_list
         
         elif(is_eval):
-            metadata_dict = {}
+            metadata_dict_for_keys = {}
             for row in reader:              
                 key, _, label = row
-                metadata_dict[key] = 'bonafide' if label == 'bona-fide' else 'spoof'
+                metadata_dict_for_keys[key] = 'bonafide' if label == 'bona-fide' else 'spoof'
                 file_list.append(key)
-            evaluation_file_creator(metadata_dict)
+            evaluation_file_creator(metadata_dict_for_keys)
             return file_list
         else:
             for row in reader:
@@ -219,7 +220,7 @@ def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
             return d_meta,file_list
 
 
-class Dataset_In_The_Wild_eval(Dataset):
+class Wav_Containing_Dataset(Dataset):
     def __init__(self, list_IDs, base_dir):
             '''self.list_IDs	: list of strings (each string: utt key),
                '''
@@ -241,8 +242,39 @@ class Dataset_In_The_Wild_eval(Dataset):
             return x_inp,utt_id
         
 
+###################
+## MLAAD Dataset ##
+###################
 
+def genSpoof_list_MLAAD(metadata_dir, is_train=False, is_eval=False):
+    d_meta = {}
+    file_list=[]
+    with open(metadata_dir, 'r') as f:
+        l_meta = f.readlines()
 
+        if (is_train):
+            for line in l_meta:
+                _,key,label = line.strip().split()
+                
+                file_list.append(key)
+                d_meta[key] = 1 if label == 'bonafide' else 0
+            return d_meta,file_list
+        
+        elif(is_eval):
+            metadata_dict_for_keys = {}
+            for line in l_meta:
+                _,key,label = line.strip().split()
+                metadata_dict_for_keys[key] = 'bonafide' if label == 'bonafide' else 'spoof'
+                file_list.append(key)
+            evaluation_file_creator(metadata_dict_for_keys)
+            return file_list
+        else:
+            for line in l_meta:
+                _,key,label = line.strip().split()
+                
+                file_list.append(key)
+                d_meta[key] = 1 if label == 'bonafide' else 0
+        return d_meta,file_list
 
 
 #--------------RawBoost data augmentation algorithms---------------------------##

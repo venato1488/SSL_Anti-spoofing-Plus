@@ -9,9 +9,6 @@ from torch import Tensor
 import fairseq
 
 
-######################################
-## Breath Talking Silence Detection ##
-######################################
 
 
 ___author__ = "Hemlata Tak"
