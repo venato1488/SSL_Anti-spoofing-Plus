@@ -18,7 +18,7 @@ __email__ = "tak@eurecom.fr"
 ## Dataset processing and loading ##
 ####################################
 
-# TODO: implement one time preporcessing of the new datasets and save it to the disk
+
 
 
 
@@ -156,9 +156,9 @@ class Dataset_ASVspoof2021_eval(Dataset):
             return x_inp,utt_id  
 
 
-#####################
-#### ITW Dataset ####
-#####################
+###############################
+#### ITW and MLAAD Dataset ####
+###############################
 
 
 
@@ -219,8 +219,40 @@ def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
                 d_meta[key] = 1 if label == 'bona-fide' else 0
             return d_meta,file_list
 
+def genSpoof_list_MLAAD(metadata_dir, is_train=False, is_eval=False):
+    d_meta = {}
+    file_list=[]
+    with open(metadata_dir, 'r') as f:
+        l_meta = f.readlines()
 
-class Wav_Containing_Dataset(Dataset):
+        if (is_train):
+            for line in l_meta:
+                _,_,key,label = line.strip().split()
+                
+                file_list.append(key)
+                d_meta[key] = 1 if label == 'bonafide' else 0
+            return d_meta,file_list
+        
+        elif(is_eval):
+            metadata_dict_for_keys = {}
+            for line in l_meta:
+                _,_,key,label = line.strip().split()
+                metadata_dict_for_keys[key] = 'bonafide' if label == 'bonafide' else 'spoof'
+                file_list.append(key)
+            evaluation_file_creator(metadata_dict_for_keys)
+            return file_list
+        else:
+            for line in l_meta:
+                _,_,key,label = line.strip().split()
+                
+                file_list.append(key)
+                d_meta[key] = 1 if label == 'bonafide' else 0
+        return d_meta,file_list
+
+
+
+
+class Wav_Containing_Dataset_eval(Dataset):
     def __init__(self, list_IDs, base_dir):
             '''self.list_IDs	: list of strings (each string: utt key),
                '''
@@ -242,40 +274,45 @@ class Wav_Containing_Dataset(Dataset):
             return x_inp,utt_id
         
 
-###################
-## MLAAD Dataset ##
-###################
 
-def genSpoof_list_MLAAD(metadata_dir, is_train=False, is_eval=False):
-    d_meta = {}
-    file_list=[]
-    with open(metadata_dir, 'r') as f:
-        l_meta = f.readlines()
+class MLAAD_train(Dataset):
+    def __init__(self,args,list_IDs, labels, base_dir,algo):
+            '''self.list_IDs	: list of strings (each string: utt key),
+               self.labels      : dictionary (key: utt key, value: label integer)'''
+               
+            self.list_IDs = list_IDs
+            self.labels = labels
+            self.base_dir = base_dir
+            self.algo=algo
+            self.args=args
+            self.cut=64600 # take ~4 sec audio (64600 samples)
 
-        if (is_train):
-            for line in l_meta:
-                _,key,label = line.strip().split()
-                
-                file_list.append(key)
-                d_meta[key] = 1 if label == 'bonafide' else 0
-            return d_meta,file_list
-        
-        elif(is_eval):
-            metadata_dict_for_keys = {}
-            for line in l_meta:
-                _,key,label = line.strip().split()
-                metadata_dict_for_keys[key] = 'bonafide' if label == 'bonafide' else 'spoof'
-                file_list.append(key)
-            evaluation_file_creator(metadata_dict_for_keys)
-            return file_list
-        else:
-            for line in l_meta:
-                _,key,label = line.strip().split()
-                
-                file_list.append(key)
-                d_meta[key] = 1 if label == 'bonafide' else 0
-        return d_meta,file_list
+    def __len__(self):
+           return len(self.list_IDs)
 
+
+    def __getitem__(self, index):
+            """
+            Retrieves a single item from the dataset at the specified index. It loads an audio file
+            using librosa, applies preprocessing using the RawBoost algorithm and data augmentation,
+            and pads the audio file to a fixed length of 64600 samples (~ 4 sec audio).
+            Crucial for training the model as it ensures that all input arrays have the same length.
+            
+            Parameters:
+            - index (int): The index of the item to retrieve from the dataset.
+
+            Returns:
+            - x_inp (Tensor): The preprocessed and padded audio file.
+            - target (int): The label of the audio file. 1 for bonafide, 0 for spoof.
+            """
+            utt_id = self.list_IDs[index]
+            X,fs = librosa.load(self.base_dir+utt_id, sr=16000) 
+            Y=process_Rawboost_feature(X,fs,self.args,self.algo)
+            X_pad= pad(Y,self.cut)
+            x_inp= Tensor(X_pad)
+            target = self.labels[utt_id]
+            
+            return x_inp, target
 
 #--------------RawBoost data augmentation algorithms---------------------------##
 

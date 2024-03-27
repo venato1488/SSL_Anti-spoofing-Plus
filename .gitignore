@@ -160,3 +160,12 @@ DF_on_MLAAD_eval332.txt
 DF_on_MLAAD_eval.txt
 DF_on_ITW_eval.txt
 audio_visualisation.py
+/database/MLAAD_GB
+MLAAD_on_MLAAD_eval.txt
+Scores/DF_on_MLAAD_GB_eval.txt
+train_meta.txt
+dev_meta.txt
+eval_meta.txt
+database/ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt
+database/ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.eval.trl.txt
+/PT_models

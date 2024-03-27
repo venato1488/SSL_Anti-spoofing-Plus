@@ -7,7 +7,7 @@ from torch import nn
 from torch import Tensor
 from torch.utils.data import DataLoader
 import yaml
-from data_utils_SSL import genSpoof_list,Dataset_ASVspoof2019_train,Dataset_ASVspoof2021_eval,genSpoof_list_ITW,Wav_Containing_Dataset,genSpoof_list_MLAAD
+from data_utils_SSL import genSpoof_list,Dataset_ASVspoof2019_train,Dataset_ASVspoof2021_eval,genSpoof_list_ITW,Wav_Containing_Dataset_eval,genSpoof_list_MLAAD,MLAAD_train
 from model import Model
 from tensorboardX import SummaryWriter
 from core_scripts.startup_config import set_random_seed
@@ -264,10 +264,10 @@ if __name__ == '__main__':
         sys.exit(0)"""
     
     if args.is_eval:
-        file_eval = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_and_M-AILABS\meta.txt',is_train=False,is_eval=True)
+        file_eval = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_GB\meta.txt',is_train=False,is_eval=True)
         print('no. of eval trials',len(file_eval))
-        print(file_eval[1:10])
-        eval_set=Wav_Containing_Dataset(list_IDs = file_eval,base_dir = 'database/MLAAD_and_M-AILABS/wav/')
+        
+        eval_set=Wav_Containing_Dataset_eval(list_IDs = file_eval,base_dir = 'database/MLAAD_GB/wav/')
         produce_evaluation_file(eval_set, model, device, args.eval_output)
         sys.exit(0)
     
@@ -276,27 +276,33 @@ if __name__ == '__main__':
 
      
     # define train dataloader
-    d_label_trn,file_train = genSpoof_list( dir_meta =  os.path.join(args.protocols_path+'ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt'),is_train=True,is_eval=False)
-    
-    print('no. of training trials',len(file_train))
-    
+    d_label_trn,file_train = genSpoof_list( dir_meta =  os.path.join(args.protocols_path+'ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt'),is_train=True,is_eval=False)   
+    print('no. of training trials',len(file_train))   
     train_set=Dataset_ASVspoof2019_train(args,list_IDs = file_train,labels = d_label_trn,base_dir = os.path.join(args.database_path+'ASVspoof2019_LA_train/'),algo=args.algo)
-    
     train_loader = DataLoader(train_set, batch_size=args.batch_size,num_workers=8, shuffle=True,drop_last = True)
     
+    """d_label_trn,file_train = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_and_M-AILABS\train_meta.txt',is_train=True,is_eval=False)   
+    print('no. of training trials',len(file_train))   
+    train_set=MLAAD_train(args,list_IDs = file_train,labels = d_label_trn,base_dir = 'database/MLAAD_and_M-AILABS/wav/',algo=args.algo)    
+    train_loader = DataLoader(train_set, batch_size=args.batch_size,num_workers=8, shuffle=True,drop_last = True)   
+    """
+
     del train_set,d_label_trn
     
 
     # define dev (validation) dataloader
-
-    d_label_dev,file_dev = genSpoof_list( dir_meta =  os.path.join(args.protocols_path+'ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.dev.trl.txt'),is_train=False,is_eval=False)
     
-    print('no. of validation trials',len(file_dev))
-    
+    d_label_dev,file_dev = genSpoof_list( dir_meta =  os.path.join(args.protocols_path+'ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.dev.trl.txt'),is_train=False,is_eval=False)    
+    print('no. of validation trials',len(file_dev))   
     dev_set = Dataset_ASVspoof2019_train(args,list_IDs = file_dev,labels = d_label_dev,base_dir = os.path.join(args.database_path+'ASVspoof2019_LA_dev/'),algo=args.algo)
-
     dev_loader = DataLoader(dev_set, batch_size=args.batch_size,num_workers=8, shuffle=False)
-
+    
+    
+    """d_label_dev,file_dev = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_and_M-AILABS\dev_meta.txt',is_train=False,is_eval=False)    
+    print('no. of validation trials',len(file_dev))   
+    dev_set = MLAAD_train(args,list_IDs = file_dev,labels = d_label_dev,base_dir = 'database/MLAAD_and_M-AILABS/wav/',algo=args.algo)
+    dev_loader = DataLoader(dev_set, batch_size=args.batch_size,num_workers=8, shuffle=False)
+    """
     del dev_set,d_label_dev
 
     
@@ -305,14 +311,27 @@ if __name__ == '__main__':
     # Training and validation 
     num_epochs = args.num_epochs
     writer = SummaryWriter('logs/{}'.format(model_tag))
-    
+    best_val_loss = float('inf')
+    epoch_no_improve = 0
+    patience = 3
+
     for epoch in range(num_epochs):
         
         running_loss = train_epoch(train_loader,model, args.lr,optimizer, device)
         val_loss = evaluate_accuracy(dev_loader, model, device)
         writer.add_scalar('val_loss', val_loss, epoch)
         writer.add_scalar('loss', running_loss, epoch)
-        print('\n{} - {} - {} '.format(epoch,
-                                                   running_loss,val_loss))
-        torch.save(model.state_dict(), os.path.join(
-            model_save_path, 'epoch_{}.pth'.format(epoch)))
+        print('\n{} - {} - {} '.format(epoch,running_loss,val_loss))
+        
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            epoch_no_improve = 0
+            best_model_path = os.path.join(model_save_path, 'best.pth')
+            torch.save(model.state_dict(), best_model_path)
+        else:
+            epoch_no_improve += 1
+            if epoch_no_improve >= patience:
+                print(f"Early stopping at epoch {epoch}!")
+                break
+        latest_model_path = os.path.join(model_save_path, 'epoch_{}.pth'.format(epoch))
+        torch.save(model.state_dict(), latest_model_path)
