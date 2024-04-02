@@ -238,7 +238,7 @@ def genSpoof_list_MLAAD(metadata_dir, is_train=False, is_eval=False):
 
         if (is_train):
             for line in l_meta:
-                _,_,key,label = line.strip().split()
+                _,_,_,key,label = line.strip().split()
                 
                 file_list.append(key)
                 d_meta[key] = 1 if label == 'bonafide' else 0
@@ -247,14 +247,14 @@ def genSpoof_list_MLAAD(metadata_dir, is_train=False, is_eval=False):
         elif(is_eval):
             metadata_dict_for_keys = {}
             for line in l_meta:
-                _,_,key,label = line.strip().split()
+                _,_,_,key,label = line.strip().split()
                 metadata_dict_for_keys[key] = 'bonafide' if label == 'bonafide' else 'spoof'
                 file_list.append(key)
             evaluation_file_creator(metadata_dict_for_keys)
             return file_list
         else:
             for line in l_meta:
-                _,_,key,label = line.strip().split()
+                _,_,_,key,label = line.strip().split()
                 
                 file_list.append(key)
                 d_meta[key] = 1 if label == 'bonafide' else 0
@@ -297,6 +297,7 @@ class Wav_Containing_Dataset_train(Dataset):
             self.algo=algo
             self.args=args
             self.cut=64600 # take ~4 sec audio (64600 samples)
+
 
     def __len__(self):
            return len(self.list_IDs)

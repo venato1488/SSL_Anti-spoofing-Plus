@@ -284,7 +284,7 @@ if __name__ == '__main__':
     d_label_trn_ITW,file_train_ITW = genSpoof_list_ITW( metadata_file_path = r'database\ITW\train_meta.txt',is_train=True,is_eval=False)
     print('no. of training trials after 10 epochs ',(len(file_train_ITW) + len(file_train)))
 
-    d_label_trn_MLAAD,file_train_MLAAD = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_GB\train_meta.txt',is_train=True,is_eval=False)
+    d_label_trn_MLAAD,file_train_MLAAD = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_GB_v2\train_meta.txt',is_train=True,is_eval=False)
     print('no. of training trials after 15 epochs ',(len(file_train_MLAAD) + len(file_train_ITW) + len(file_train)))
     """d_label_trn,file_train = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_GB\train_meta.txt',is_train=True,is_eval=False)   
     print('no. of training trials',len(file_train))   
@@ -305,7 +305,7 @@ if __name__ == '__main__':
     d_label_dev_ITW,file_dev_ITW = genSpoof_list_ITW( metadata_file_path = r'database\ITW\dev_meta.txt',is_train=False,is_eval=False)
     print('no. of validation trials after 10 epochs ',(len(file_dev)+len(file_dev_ITW)))
 
-    d_label_dev_MLAAD,file_dev_MLAAD = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_GB\dev_meta.txt',is_train=False,is_eval=False)
+    d_label_dev_MLAAD,file_dev_MLAAD = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_GB_v2\dev_meta.txt',is_train=False,is_eval=False)
     print('no. of validation trials after 15 epochs ',(len(file_dev)+len(file_dev_ITW)+len(file_dev_MLAAD)))
     """d_label_dev,file_dev = genSpoof_list_MLAAD(metadata_dir = r'database\MLAAD_and_M-AILABS\dev_meta.txt',is_train=False,is_eval=False)    
     print('no. of validation trials',len(file_dev))   
@@ -315,13 +315,11 @@ if __name__ == '__main__':
     del d_label_dev
 
     
-    
-
     # Training and validation 
     num_epochs = args.num_epochs
     writer = SummaryWriter('logs/{}'.format(model_tag))
     best_val_loss = float('inf')
-    itw_added = True
+    itw_added = False
     mlaad_added = False
     patience = 3
     epoch_no_improve = 0
@@ -354,9 +352,9 @@ if __name__ == '__main__':
             best_val_loss = float('inf')
             
         elif not mlaad_added and epoch_no_improve >= patience:
-            asv_ITW_and_MLAAD_train = ConcatDataset([asv_and_itw_train, Wav_Containing_Dataset_train(list_IDs = file_train_MLAAD,base_dir = 'database/MLAAD_GB/wav/', algo=args.algo,labels=d_label_trn_ITW,args=args)])
+            asv_ITW_and_MLAAD_train = ConcatDataset([asv_and_itw_train, Wav_Containing_Dataset_train(list_IDs = file_train_MLAAD,base_dir = 'database/MLAAD_GB_v2/wav/', algo=args.algo,labels=d_label_trn_MLAAD,args=args)])
             train_loader = DataLoader(asv_ITW_and_MLAAD_train, batch_size=args.batch_size,num_workers=8, shuffle=True,drop_last = True)
-            asv_ITW_and_MLAAD_dev = ConcatDataset([asv_and_itw_dev, Wav_Containing_Dataset_train(list_IDs = file_dev_MLAAD,base_dir = 'database/MLAAD_GB/wav/', algo=args.algo,labels=d_label_trn_ITW,args=args)])
+            asv_ITW_and_MLAAD_dev = ConcatDataset([asv_and_itw_dev, Wav_Containing_Dataset_train(list_IDs = file_dev_MLAAD,base_dir = 'database/MLAAD_GB_v2/wav/', algo=args.algo,labels=d_label_trn_MLAAD,args=args)])
             dev_loader = DataLoader(asv_ITW_and_MLAAD_dev, batch_size=args.batch_size,num_workers=8, shuffle=False)
             del asv_and_itw_train, asv_and_itw_dev
             print('MLAAD data added')
