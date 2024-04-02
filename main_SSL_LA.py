@@ -137,7 +137,7 @@ if __name__ == '__main__':
 
     # Hyperparameters
     parser.add_argument('--batch_size', type=int, default=14)
-    parser.add_argument('--num_epochs', type=int, default=20)
+    parser.add_argument('--num_epochs', type=int, default=100)
     parser.add_argument('--lr', type=float, default=0.000001)
     parser.add_argument('--weight_decay', type=float, default=0.0001)
     parser.add_argument('--loss', type=str, default='weighted_CCE')

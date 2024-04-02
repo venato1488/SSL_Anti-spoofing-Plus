@@ -37,7 +37,7 @@ def genSpoof_list( dir_meta,is_train=False,is_eval=False):
                       If is_eval is True, returns a list of file names.
                       Otherwise, returns a dictionary containing the metadata for each file and a list of file names.
     """
-    # TODO: Add other if conditions for other datasets with different metadata formats
+    
     d_meta = {}
     file_list=[]
     with open(dir_meta, 'r') as f:
@@ -173,6 +173,19 @@ def evaluation_file_creator(metadata_dict):
         file.close()
         print("Keys file created successfully")
 
+def parse_line_simple(line):
+    # Split the line into three parts, but only split at the first two spaces found
+    parts = line.split(maxsplit=2)
+    if len(parts) != 3:
+        raise ValueError("Line format is incorrect")
+
+    key = parts[0]
+    # Assuming the name is always in quotes, strip them off
+    name = parts[1].strip('\"')
+    label = parts[2]
+
+    return key, name, label
+
 
 def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
     """
@@ -191,13 +204,11 @@ def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
     """
     d_meta = {}
     file_list=[]
-    with open(metadata_file_path, 'r') as file:
-        reader = csv.reader(file)
-        next(reader)  # Skip the header row
-
+    with open(metadata_file_path, 'r') as f:
+        l_meta = f.readlines()
         if (is_train):
-            for row in reader:
-                key, _,label = row
+            for line in l_meta:
+                key, _,label = parse_line_simple(line)
                 
                 file_list.append(key)
                 d_meta[key] = 1 if label == 'bona-fide' else 0
@@ -205,15 +216,15 @@ def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
         
         elif(is_eval):
             metadata_dict_for_keys = {}
-            for row in reader:              
-                key, _, label = row
+            for line in l_meta:              
+                key, _, label = parse_line_simple(line)
                 metadata_dict_for_keys[key] = 'bonafide' if label == 'bona-fide' else 'spoof'
                 file_list.append(key)
             evaluation_file_creator(metadata_dict_for_keys)
             return file_list
         else:
-            for row in reader:
-                key, _,label = row
+            for line in l_meta:
+                key, _,label = parse_line_simple(line)
                 
                 file_list.append(key)
                 d_meta[key] = 1 if label == 'bona-fide' else 0
@@ -275,7 +286,7 @@ class Wav_Containing_Dataset_eval(Dataset):
         
 
 
-class MLAAD_train(Dataset):
+class Wav_Containing_Dataset_train(Dataset):
     def __init__(self,args,list_IDs, labels, base_dir,algo):
             '''self.list_IDs	: list of strings (each string: utt key),
                self.labels      : dictionary (key: utt key, value: label integer)'''

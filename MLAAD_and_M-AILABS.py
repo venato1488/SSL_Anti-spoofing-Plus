@@ -11,23 +11,33 @@ def count_audio_by_gender(protocol_path):
     male_count = 0
     female_count = 0
     mixed_count = 0
+    languages_count = {}
     with open(protocol_path, 'r') as file:
         for line in file:
-            speaker, gender,  file_name, label = line.split()
+            speaker, language, gender, file_name, label = line.split()
             if gender == 'male':
                 male_count += 1 
             elif gender == 'female':
                 female_count += 1
             else:
                 mixed_count += 1
-    return male_count, female_count, mixed_count
+            if language in languages_count:
+                languages_count[language] += 1
+            else:
+                languages_count[language] = 1
+    return male_count, female_count, mixed_count, languages_count
 
 
-def split_meta_by_speaker(meta_path, save_dir):
-    metadata_df = pd.read_csv(meta_path, sep=' ', header=None, names = ['speaker', 'gender', 'file_name', 'label'])
+
+
+def split_meta_by_speaker(meta_path, save_dir, dataset_name):
+    if dataset_name == 'MLAAD_GB_v2':    
+        metadata_df = pd.read_csv(meta_path, sep=' ', header=None, names = ['speaker', 'language', 'gender', 'file_name', 'label'])
+    elif dataset_name == 'ITW':
+        metadata_df = pd.read_csv(meta_path, header=0, names = ['file', 'speaker', 'label'])
     unique_speakers = metadata_df['speaker'].unique()
-    train_speakers, test_speakers = train_test_split(unique_speakers, test_size=0.5, random_state=4321)
-    dev_speakers, eval_speakers = train_test_split(test_speakers, test_size=0.5, random_state=4321)
+    train_speakers, test_speakers = train_test_split(unique_speakers, test_size=0.4, random_state=123)
+    dev_speakers, eval_speakers = train_test_split(test_speakers, test_size=0.5, random_state=123)
     
     train_df = metadata_df[metadata_df['speaker'].isin(train_speakers)]
     dev_df = metadata_df[metadata_df['speaker'].isin(dev_speakers)]
@@ -51,7 +61,7 @@ def print_speakers_info(meta_path):
     speakers_info = {}
     with open(meta_path, 'r') as file:
         for line in file:
-            speaker, gender, file_name, label = line.strip().split()
+            speaker, language, gender, file_name, label = line.strip().split()
             if speaker in speakers_info:
                 speakers_info[speaker]['file_count'] += 1
             else:
@@ -63,8 +73,8 @@ def create_new_meta(meta_dir, speakers):
     meta_path = os.path.join(meta_dir, 'meta.txt')
     with open(meta_path , 'w') as file:
         for speaker, speaker_data in speakers.items():
-            for gender, file_name, label in speaker_data:
-                file.write(f"{speaker} {gender} {file_name} {label}\n")
+            for gender, language, file_name, label in speaker_data:
+                file.write(f"{speaker} {language} {gender} {file_name} {label}\n")
 
             print(f"Speaker: {speaker} - Number of files: {len(speaker_data)}")
         file.close()  
@@ -102,7 +112,7 @@ def copy_files_to_new_dir(meta_csv_paths, concat_dataset_dir):
     for meta_csv_path in meta_csv_paths:
         with open(meta_csv_path, 'r', encoding='utf-8') as file:
             reader = csv.reader(file)
-            next(reader)  # Skip the header row
+            next(reader)
             for row in reader:
                 path, path_o, _, _, _, _, _, _, _ = row[0].split('|')
                 if path_o.split('/')[0] == 'fr_FR':
@@ -114,11 +124,10 @@ def copy_files_to_new_dir(meta_csv_paths, concat_dataset_dir):
                         speaker = path_o.split('/')[3][:-3]
                     else:
                         speaker = path_o.split('/')[3]
-                    
-                # TODO SOLVE THE WEIRDNESS WITH ITALIAN NOVELLE
-                    
 
-                #speaker = f"{speaker_id}_male" if gender == 'male' else f"{speaker_id}_female"
+                # Keep track of the original and spoofed languages in ISO 639-1 format
+                original_language = path_o.split('/')[0][:2]
+                spoofed_language = row[0].split('|')[2]
 
                 # Keep track of speakers and their files
                 if speaker not in speakers:
@@ -137,11 +146,11 @@ def copy_files_to_new_dir(meta_csv_paths, concat_dataset_dir):
                     spoof_chunks_list = split_audio_into_chunks(spoof_source_path, audio_file_dest_path, file_counter)
                     file_counter += len(spoof_chunks_list)
                     for chunk in spoof_chunks_list:
-                        speakers[speaker].append((gender, chunk, 'spoof'))
+                        speakers[speaker].append((gender, original_language, chunk, 'spoof'))
                     orig_chunks_list = split_audio_into_chunks(orig_source_path, audio_file_dest_path, file_counter)
                     file_counter += len(orig_chunks_list)
                     for chunk in orig_chunks_list:
-                        speakers[speaker].append((gender, chunk, 'bonafide'))
+                        speakers[speaker].append((gender, spoofed_language, chunk, 'bonafide'))
                 else:
                     # For female speakers, copy files without splitting
                     new_filename_s = f"{file_counter}_{os.path.basename(path_s)}"
@@ -151,14 +160,14 @@ def copy_files_to_new_dir(meta_csv_paths, concat_dataset_dir):
                     shutil.copy(spoof_source_path, spoof_dest_path)
                     shutil.copy(orig_source_path, orig_dest_path)
                     file_counter += 2
-                    speakers[speaker].append((gender, new_filename_s, 'spoof'))
-                    speakers[speaker].append((gender, new_filename_o, 'bonafide'))
+                    speakers[speaker].append((gender, original_language, new_filename_s, 'spoof'))
+                    speakers[speaker].append((gender, spoofed_language, new_filename_o, 'bonafide'))
             #print(speakers)
                 
         meta_cvs_counter += 1
         print(f"Processed {meta_cvs_counter} meta.csv files out of {len(meta_csv_paths)}")
-        """if meta_cvs_counter == 2:
-            return speakers"""
+        '''if meta_cvs_counter == 2:
+            return speakers'''
     return speakers
 
 
@@ -167,7 +176,7 @@ def copy_files_to_new_dir(meta_csv_paths, concat_dataset_dir):
 
 
 
-dataset_dir = 'database/MLAAD_GB'
+dataset_dir = 'database/MLAAD_GB_v2'
 
 if not os.path.exists(dataset_dir):
         os.mkdir(dataset_dir)
@@ -182,13 +191,22 @@ mlaand_v2_base_dir = r"database\mlaad_v2\MLAAD\fake"
 
 
 
-male, female, mix = count_audio_by_gender(dataset_dir+'/meta.txt')
-print(f"Male audio: {male}\nFemale audio: {female}\nMixed audio: {mix}")
+#male, female, mix, langages_count = count_audio_by_gender(dataset_dir+'/meta.txt')
+#print(f"Male audio: {male}\nFemale audio: {female}\nMixed audio: {mix}")
 
-len_train, len_dev, len_eval = split_meta_by_speaker(os.path.join(dataset_dir, 'meta.txt'), dataset_dir)
+#for lang, count in langages_count.items():
+#    print(f"{lang}: {count}")
+
+
+"""# Split the meta file by speaker MLAAD_GB_v2
+len_train, len_dev, len_eval = split_meta_by_speaker(os.path.join(dataset_dir, 'meta.txt'), dataset_dir, dataset_name='MLAAD_GB_v2')
 print(f"Train: {len_train}\nDev: {len_dev}\nEval: {len_eval}")
-print()
-print_speakers_info(os.path.join(dataset_dir, 'meta.txt'))
+print()"""
+#print_speakers_info(os.path.join(dataset_dir, 'meta.txt'))
+
+# Split the meta file by speaker ITW
+len_train, len_dev, len_eval = split_meta_by_speaker('database/ITW/meta.csv', 'database/ITW', dataset_name='ITW')
+print(f"Train: {len_train}\nDev: {len_dev}\nEval: {len_eval}")
 
 """trial_meta={}
 file_name_list_trial=[]
