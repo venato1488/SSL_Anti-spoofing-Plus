@@ -171,3 +171,6 @@ database/ASVspoof_LA_cm_protocols/ASVspoof2019.LA.cm.eval.trl.txt
 /PT_models
 /database/MLAAD_GB_v2
 /database/ITW
+/database/MLAAD_GB_demo
+/database/ITW_demo
+/.vs

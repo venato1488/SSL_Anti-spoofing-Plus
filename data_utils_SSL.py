@@ -162,7 +162,7 @@ class Dataset_ASVspoof2021_eval(Dataset):
 
 
 
-def evaluation_file_creator(metadata_dict):
+def key_evaluation_file_creator(metadata_dict):
     """
     Creates an evaluation file formated in the same way ASVspoof 2021 DF evaluation file is formatted.
     """
@@ -172,19 +172,6 @@ def evaluation_file_creator(metadata_dict):
             file.write('- {} - - - {} - eval\n'.format(key, label))
         file.close()
         print("Keys file created successfully")
-
-def parse_line_simple(line):
-    # Split the line into three parts, but only split at the first two spaces found
-    parts = line.split(maxsplit=2)
-    if len(parts) != 3:
-        raise ValueError("Line format is incorrect")
-
-    key = parts[0]
-    # Assuming the name is always in quotes, strip them off
-    name = parts[1].strip('\"')
-    label = parts[2]
-
-    return key, name, label
 
 
 def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
@@ -208,24 +195,67 @@ def genSpoof_list_ITW(metadata_file_path, is_train=False, is_eval=False):
         l_meta = f.readlines()
         if (is_train):
             for line in l_meta:
-                key, _,label = parse_line_simple(line)
-                
+                # Strip the line of leading/trailing whitespace
+                line = line.strip()
+
+                # Determine if the label is 'spoof' or 'bona-fide'
+                if line.endswith('spoof'):
+                    label = 'spoof'
+                elif line.endswith('bona-fide'):
+                    label = 'bona-fide'
+                else:
+                    continue  # or raise an error if unexpected format
+
+                # Remove the label from the line
+                key_with_description = line[:-len(label)].strip()
+
+                # Extract the key (filename), assuming it's before the first space
+                key = key_with_description.split(' ')[0].strip()
                 file_list.append(key)
                 d_meta[key] = 1 if label == 'bona-fide' else 0
             return d_meta,file_list
         
         elif(is_eval):
             metadata_dict_for_keys = {}
-            for line in l_meta:              
-                key, _, label = parse_line_simple(line)
+            for line in l_meta:
+                # Strip the line of leading/trailing whitespace
+                line = line.strip()
+
+                # Determine if the label is 'spoof' or 'bona-fide'
+                if line.endswith('spoof'):
+                    label = 'spoof'
+                elif line.endswith('bona-fide'):
+                    label = 'bona-fide'
+                else:
+                    continue  # or raise an error if unexpected format
+
+                # Remove the label from the line
+                key_with_description = line[:-len(label)].strip()
+
+                # Extract the key (filename), assuming it's before the first space
+                key = key_with_description.split(' ')[0].strip()
                 metadata_dict_for_keys[key] = 'bonafide' if label == 'bona-fide' else 'spoof'
                 file_list.append(key)
-            evaluation_file_creator(metadata_dict_for_keys)
+            key_evaluation_file_creator(metadata_dict_for_keys)
             return file_list
         else:
             for line in l_meta:
-                key, _,label = parse_line_simple(line)
-                
+                # Strip the line of leading/trailing whitespace
+                line = line.strip()
+
+                # Determine if the label is 'spoof' or 'bona-fide'
+                if line.endswith('spoof'):
+                    label = 'spoof'
+                elif line.endswith('bona-fide'):
+                    label = 'bona-fide'
+                else:
+                    continue  # or raise an error if unexpected format
+
+                # Remove the label from the line
+                key_with_description = line[:-len(label)].strip()
+
+                # Extract the key (filename), assuming it's before the first space
+                key = key_with_description.split(' ')[0].strip()
                 file_list.append(key)
                 d_meta[key] = 1 if label == 'bona-fide' else 0
             return d_meta,file_list
@@ -250,7 +280,7 @@ def genSpoof_list_MLAAD(metadata_dir, is_train=False, is_eval=False):
                 _,_,_,key,label = line.strip().split()
                 metadata_dict_for_keys[key] = 'bonafide' if label == 'bonafide' else 'spoof'
                 file_list.append(key)
-            evaluation_file_creator(metadata_dict_for_keys)
+            key_evaluation_file_creator(metadata_dict_for_keys)
             return file_list
         else:
             for line in l_meta:
